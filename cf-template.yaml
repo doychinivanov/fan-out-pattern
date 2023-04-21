@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A SAM template for deploying fan-out architecture.
+Resources:
+  ShippingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: shipping-queue
+    Metadata:
+      SamResourceId: ShippingQueue
+  AccountingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: accounting-queue
+    Metadata:
+      SamResourceId: AccountingQueue
+  FanOutNotification:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Fan-Out Notification
+      TopicName: fan-out-notification
+    Metadata:
+      SamResourceId: FanOutNotification
+  ShippingQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      TopicArn:
+        Ref: FanOutNotification
+      Endpoint:
+        Fn::GetAtt:
+        - ShippingQueue
+        - Arn
+      RawMessageDelivery: 'true'
+    Metadata:
+      SamResourceId: ShippingQueueSubscription
+  AccountingQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      TopicArn:
+        Ref: FanOutNotification
+      Endpoint:
+        Fn::GetAtt:
+        - AccountingQueue
+        - Arn
+      RawMessageDelivery: 'true'
+    Metadata:
+      SamResourceId: AccountingQueueSubscription
+  ShippingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: AllowSNSToSendShippingQueueMessage
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: sns.amazonaws.com
+          Action: sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - ShippingQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: FanOutNotification
+      Queues:
+      - Ref: ShippingQueue
+    Metadata:
+      SamResourceId: ShippingQueuePolicy
+  AccountingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: AllowSNSToSendAccountingQueueMessage
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: sns.amazonaws.com
+          Action: sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - AccountingQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: FanOutNotification
+      Queues:
+      - Ref: AccountingQueue
+    Metadata:
+      SamResourceId: AccountingQueuePolicy
+  ApiLambdaHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs14.x
+      CodeUri: s3://fan-out-sam-template/502e86df74d842bf5f64b8f9c4fb854e
+      Description: Handles API Gateway order post
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        OrderPostAPI:
+          Type: Api
+          Properties:
+            Path: /order
+            Method: POST
+      Policies:
+      - SNSPublishMessagePolicy:
+          TopicName:
+            Fn::GetAtt:
+            - FanOutNotification
+            - TopicName
+    Metadata:
+      SamResourceId: ApiLambdaHandler

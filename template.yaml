@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A SAM template for deploying fan-out architecture.
+
+Resources:
+  ShippingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: shipping-queue
+  AccountingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: accounting-queue
+  FanOutNotification:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Fan-Out Notification
+      TopicName: fan-out-notification
+  ShippingQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      TopicArn: !Ref FanOutNotification
+      Endpoint: !GetAtt ShippingQueue.Arn
+      RawMessageDelivery: 'true'
+  AccountingQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      TopicArn: !Ref FanOutNotification
+      Endpoint: !GetAtt AccountingQueue.Arn
+      RawMessageDelivery: 'true'
+  ShippingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: AllowSNSToSendShippingQueueMessage
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ShippingQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref FanOutNotification
+      Queues:
+        - !Ref ShippingQueue
+  AccountingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: AllowSNSToSendAccountingQueueMessage
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AccountingQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref FanOutNotification
+      Queues:
+        - !Ref AccountingQueue
+  ApiLambdaHandler:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: lambda/orderApiFunction/dist/
+      Description: Handles API Gateway order post
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        OrderPostAPI:
+          Type: Api
+          Properties:
+            Path: /order
+            Method: POST
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt FanOutNotification.TopicName
