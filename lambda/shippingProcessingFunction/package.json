@@ -1,0 +1,33 @@
+{
+  "name": "shipping_processing_function",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "description": "Processes shipping data",
+  "scripts": {
+    "test": "jest --collectCoverage",
+    "build": "yarn install && babel src --out-dir dist --extensions \".ts,.js\" && npx node-prune && mv node_modules dist",
+    "lint": "eslint -c .eslintrc.js --ext .ts ./",
+    "lint:fix": "eslint -c .eslintrc.js --ext .ts ./ --fix"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.21.4",
+    "@babel/preset-env": "^7.11.5",
+    "@babel/preset-typescript": "^7.10.4",
+    "@types/aws-lambda": "^8.10.114",
+    "@types/jest": "^29.5.0",
+    "@typescript-eslint/eslint-plugin": "^5.43.0",
+    "@typescript-eslint/parser": "^5.58.0",
+    "babel-plugin-inline-replace-variables": "^1.3.1",
+    "eslint": "^8.0.1",
+    "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "jest": "^29.5.0",
+    "typescript": "*",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  }
+}

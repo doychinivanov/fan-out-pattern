@@ -97,7 +97,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: index.handler
-      Runtime: nodejs14.x
+      Runtime: nodejs18.x
       CodeUri: s3://fan-out-sam-template/502e86df74d842bf5f64b8f9c4fb854e
       Description: Handles API Gateway order post
       MemorySize: 128
@@ -116,3 +116,55 @@ Resources:
             - TopicName
     Metadata:
       SamResourceId: ApiLambdaHandler
+  ShippingLambdaProcessor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: s3://fan-out-sam-template/404f617d6619eff733fdbb394f07a35a
+      Description: Processes shipping data from SQS
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - ShippingQueue
+              - Arn
+            BatchSize: 10
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            Fn::GetAtt:
+            - ShippingQueue
+            - QueueName
+    Metadata:
+      SamResourceId: ShippingLambdaProcessor
+  AccountingLambdaProcessor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: s3://fan-out-sam-template/46f68ec4bf449f502d37b5ac614912c6
+      Description: Processes accounting data from SQS
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - AccountingQueue
+              - Arn
+            BatchSize: 10
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            Fn::GetAtt:
+            - AccountingQueue
+            - QueueName
+    Metadata:
+      SamResourceId: AccountingLambdaProcessor

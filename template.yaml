@@ -82,3 +82,41 @@ Resources:
       Policies:
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt FanOutNotification.TopicName
+  ShippingLambdaProcessor:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: lambda/shippingProcessingFunction/dist/
+      Description: Processes shipping data from SQS
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ShippingQueue.Arn
+            BatchSize: 10
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            !GetAtt ShippingQueue.QueueName
+  AccountingLambdaProcessor:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: lambda/accountingProcessingFunction/dist/
+      Description: Processes accounting data from SQS
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt AccountingQueue.Arn
+            BatchSize: 10
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            !GetAtt AccountingQueue.QueueName
